@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  content-automation:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: content-automation
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../work:/app/work
+      - ../temp:/app/temp
+      - ../output:/app/output
+      - ../logs:/app/logs
+    networks:
+      - automation-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import content_automation; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: content-automation-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - automation-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Optional: N8N for workflow automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: content-automation-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=changeme
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ../content_automation/workflows:/home/node/.n8n/workflows
+    networks:
+      - automation-network
+    depends_on:
+      - redis
+
+networks:
+  automation-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  n8n-data:

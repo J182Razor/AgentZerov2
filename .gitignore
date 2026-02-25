@@ -1,42 +1,84 @@
-# Ignore common unwanted files globally
-**/.DS_Store
-**/.env
-**/__pycache__/
+# Python
+__pycache__/
 *.py[cod]
-**/.conda/
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-#Ignore IDE files
-.cursor/
-.windsurf/
-
-# ignore test files in root dir
-/*.test.py
-
-# Ignore all contents of the virtual environment directory
+# Virtual environments
+venv/
+ENV/
+env/
 .venv/
 
-# obsolete folders
-memory/
-knowledge/custom/
-instruments/
+# IDE
+.idea/
+.vscode/.
+*.swp
+*.swo
 
-# Handle logs directory
-logs/**
-!logs/**/
+# Logs and temp files
+logs/
+*.log
+tmp/
+*.tmp
+*.temp
 
-# Handle tmp and usr directory
-tmp/**
-!tmp/**/
-usr/**
-!usr/**/
+# Sensitive files
+.env
+.env.*
+*.pem
+*.key
+secrets.json
+credentials.json
 
-# Handle knowledge directory
+# Database files (user-specific)
+*.db
+*.sqlite
+*.sqlite3
+*.lancedb/
+*.mv2
 
-# Global rule to include .gitkeep files anywhere
-!**/.gitkeep
+# Docker
+.docker/
 
-# for browser-use
-agent_history.gif
+# OS files
+.DS_Store
+Thumbs.db
 
-.agent/**
-.claude/**
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Build artifacts
+node_modules/
+.npm/
+
+# User-specific data directories (keep structure)
+usr/chats/
+usr/memory/
+usr/history/
+
+# Sensitive user data
+usr/secrets.env
+usr/projects/*/.a0proj/secrets.env
+usr/chats/
+usr/memory/
+usr/history/
+

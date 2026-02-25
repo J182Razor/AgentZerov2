@@ -1,0 +1,28 @@
+# Core dependencies
+aiohttp==3.9.1
+aiofiles==23.2.1
+pydantic==2.5.3
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+
+# AI/ML APIs
+openai==1.6.1
+elevenlabs==0.2.27
+
+# Database
+pyairtable==2.2.1
+
+# Video/Audio Processing
+# Note: FFmpeg and Whisper must be installed separately
+# FFmpeg: apt-get install ffmpeg
+# Whisper: pip install openai-whisper
+openai-whisper==20231117
+
+# Development dependencies (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+black==23.12.1
+ruff==0.1.9
+mypy==1.7.1
+pre-commit==3.6.0

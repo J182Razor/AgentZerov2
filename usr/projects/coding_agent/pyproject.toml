@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "content-automation"
+version = "1.0.0"
+description = "AI Avatar Content Automation System for multi-platform publishing"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Content Automation Team", email = "team@example.com"}
+]
+keywords = [
+    "ai",
+    "automation",
+    "content-creation",
+    "video-processing",
+    "social-media",
+    "avatar",
+    "tiktok",
+    "instagram"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "aiohttp>=3.9.0",
+    "aiofiles>=23.2.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+    "openai>=1.6.0",
+    "elevenlabs>=0.2.0",
+    "pyairtable>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.12.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "pre-commit>=3.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/content-automation"
+Documentation = "https://github.com/yourusername/content-automation/blob/main/README.md"
+Repository = "https://github.com/yourusername/content-automation"
+Issues = "https://github.com/yourusername/content-automation/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["content_automation*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=content_automation --cov-report=html --cov-report=term"
+testpaths = ["tests"]
+asyncio_mode = "auto"

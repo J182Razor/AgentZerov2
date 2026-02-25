@@ -1,0 +1,90 @@
+{
+  "name": "AI Content Creator",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerOn": "manual"
+      },
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Get video URL from Airtable\nconst videoUrl = items[0].json.video_url;\nreturn items;"
+      },
+      "name": "Get Video URL",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "python /app/scripts/example_creator.py {{$json.video_url}}"
+      },
+      "name": "Create Content",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "Create",
+        "recordId": "{{$json.record_id}}",
+        "fields": {
+          "status": "review",
+          "output_video": "{{$json.video_path}}"
+        }
+      },
+      "name": "Update Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Video URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video URL": {
+      "main": [
+        [
+          {
+            "node": "Create Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Content": {
+      "main": [
+        [
+          {
+            "node": "Update Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "Automatic Publisher",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "python /app/scripts/example_publisher.py"
+      },
+      "name": "Publish Content",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        450,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Publish Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

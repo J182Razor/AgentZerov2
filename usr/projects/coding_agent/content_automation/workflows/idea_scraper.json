@@ -1,0 +1,47 @@
+{
+  "name": "Automatic Idea Scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily 8 AM Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "python /app/scripts/example_scraper.py"
+      },
+      "name": "Scrape Ideas",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        450,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 8 AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scrape Ideas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

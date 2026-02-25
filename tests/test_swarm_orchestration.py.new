@@ -1,0 +1,82 @@
+"""
+Integration Tests for Swarm Orchestration System
+
+Tests all workflow patterns: Sequential, Concurrent, Graph, MajorityVoting,
+StarSwarm, HierarchicalSwarm, and MixtureOfAgents.
+
+Uses heavy mocking to isolate tests from Agent Zero framework dependencies.
+"""
+
+import asyncio
+import json
+import pytest
+import sys
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from typing import Any, Optional
+from dataclasses import dataclass, field
+from enum import Enum
+
+# =============================================================================
+# MOCK DEPENDENCIES BEFORE IMPORTS
+# =============================================================================
+
+# Mock agent module
+mock_agent_module = MagicMock()
+mock_agent_class = MagicMock()
+mock_agent_module.Agent = mock_agent_class
+mock_agent_module.UserMessage = MagicMock
+sys.modules["agent"] = mock_agent_module
+
+# Mock initialize module
+mock_initialize = MagicMock()
+mock_initialize.initialize_agent = MagicMock()
+sys.modules["initialize"] = mock_initialize
+
+# Mock python.helpers modules
+mock_tool_module = MagicMock()
+mock_tool_module.Tool = MagicMock()
+mock_tool_module.Response = MagicMock
+sys.modules["python.helpers.tool"] = mock_tool_module
+
+mock_subagents = MagicMock()
+mock_subagents.load_agent_data = MagicMock()
+sys.modules["python.helpers.subagents"] = mock_subagents
+
+mock_files = MagicMock()
+sys.modules["python.helpers.files"] = mock_files
+
+mock_embeddings = MagicMock()
+mock_embeddings.get_embeddings_model = MagicMock()
+sys.modules["python.helpers.embeddings"] = mock_embeddings
+
+# Now import the actual modules we want to test
+from python.helpers.swarm_orchestration import (
+    AgentConfig,
+    WorkflowStatus,
+    WorkflowStepResult,
+    WorkflowResult,
+    WorkflowTimeoutError,
+    WorkflowExecutionError,
+    BaseWorkflow,
+)
+
+
+from python.helpers.swarm_orchestration import (
+    AgentConfig,
+    WorkflowStatus,
+    WorkflowStepResult,
+    WorkflowResult,
+    BaseWorkflow,
+    AggregationStrategy,
+)
+
+from python.tools.swarm_consensus import (MajorityVoting, MixtureOfAgents, VoteResult, LLMCouncil, DebateWithJudge)
+
+from python.tools.swarm_patterns import (StarSwarm, HierarchicalSwarm, SwarmRouter, RoundRobinSwarm, GroupChat, ForestSwarm, SpreadSheetSwarm, AutoSwarmBuilder)
+
+from python.tools.swarm_workflow import (SequentialWorkflow, ConcurrentWorkflow, GraphWorkflow)
+
+# =============================================================================
+# FIXTURES
+# =============================================================================

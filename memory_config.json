@@ -1,0 +1,20 @@
+{
+  "memvid_path": "/a0/usr/memory/fused/memory.mv2",
+  "simplemem_path": "/a0/usr/memory/fused/memory.lancedb",
+  "kg_path": "/a0/usr/memory/fused/knowledge_graph.json",
+  "embedding_model": "text-embedding-3-small",
+  "local_embedding_model": "all-MiniLM-L6-v2",
+  "enable_memvid": true,
+  "enable_simplemem": true,
+  "enable_kg": false,
+  "enable_compression": true,
+  "rrf_k": 60,
+  "default_k": 10,
+  "retrieval_weights": {
+    "semantic": 0.5,
+    "lexical": 0.3,
+    "kg": 0.2
+  },
+  "decay_threshold_days": 30,
+  "merge_similarity_threshold": 0.85
+}
