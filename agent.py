@@ -1,4 +1,9 @@
 import asyncio, random, string, threading
+try:
+ import orjson as json
+except ImportError:
+ import json
+
 import nest_asyncio
 
 nest_asyncio.apply()
