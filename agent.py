@@ -998,18 +998,38 @@ class Agent:
         from python.tools.unknown import Unknown
         from python.helpers.tool import Tool
 
-        classes = []
+        # Cache lookup: resolve tool class from cache before filesystem scan
+        try:
+            from python.helpers.tool_cache import ToolCache as _TC
+            _cache = _TC()
+            _cached_class = _cache.get(name)
+        except Exception:
+            _cache = None
+            _cached_class = None
 
-        # search for tools in agent's folder hierarchy
-        paths = subagents.get_paths(self, "tools", name + ".py", default_root="python")
-        for path in paths:
-            try:
-                classes = extract_tools.load_classes_from_file(path, Tool)  # type: ignore[arg-type]
-                break
-            except Exception:
-                continue
+        if _cached_class is not None:
+            tool_class = _cached_class
+        else:
+            classes = []
 
-        tool_class = classes[0] if classes else Unknown
+            # search for tools in agent's folder hierarchy
+            paths = subagents.get_paths(self, "tools", name + ".py", default_root="python")
+            for path in paths:
+                try:
+                    classes = extract_tools.load_classes_from_file(path, Tool)  # type: ignore[arg-type]
+                    break
+                except Exception:
+                    continue
+
+            tool_class = classes[0] if classes else Unknown
+
+            # Store resolved class in cache for future lookups
+            if _cache is not None:
+                try:
+                    _cache.set(name, tool_class)
+                except Exception:
+                    pass
+
         return tool_class(
             agent=self,
             name=name,
