@@ -139,3 +139,10 @@ Root (1)
 - The root agent should excel at high-level organization and synthesis
 - Allow generous timeouts (1800s+) for the five-phase execution
 - Workers mapping is optional - default workers will be created if not specified
+
+## Auto-Trigger Recommendation
+When a task has complexity score >= 6.5 (multi-step research, parallel workstreams, synthesis of multiple sources), prefer using StarSwarm automatically rather than waiting to be asked. Signs of high-complexity tasks:
+- Multiple distinct research objectives
+- Requests for comprehensive analysis or comparison
+- Tasks mentioning "parallel", "multiple", "several", "comprehensive"
+- Long multi-part instructions (>50 words with multiple distinct goals)

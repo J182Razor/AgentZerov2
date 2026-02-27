@@ -17,6 +17,12 @@ from typing import Any, Optional, Union, List, Dict
 
 from agent import Agent, UserMessage
 from python.helpers.tool import Tool, Response
+
+try:
+    from python.helpers.nvidia_router import NvidiaRouter, NvidiaRole
+    _NVIDIA_ROUTER_AVAILABLE = True
+except ImportError:
+    _NVIDIA_ROUTER_AVAILABLE = False
 from python.helpers.swarm_orchestration import (
     AgentConfig,
     BaseWorkflow,
@@ -35,6 +41,7 @@ class VotingStrategy(Enum):
     EXACT = "exact"           # Exact string match after normalization
     SEMANTIC = "semantic"      # Embedding similarity clustering
     LLM = "llm"               # LLM as judge
+    MODEL_DIVERSITY = "model_diversity"  # Assign diverse NVIDIA models per agent, then LLM vote
 
 
 class TieBreakStrategy(Enum):
@@ -507,6 +514,56 @@ Format:
             logger.exception(f"LLM voting failed, falling back to exact: {e}")
             return self._exact_vote(answers)
 
+    async def _model_diversity_vote(self, answers: list[tuple[str, str]]) -> VoteResult:
+        """
+        MODEL_DIVERSITY strategy: assign each agent a different NVIDIA model role
+        (REASONING for agent 1, CHAT for agent 2, FAST for agent 3), record which
+        model each agent used in the result metadata, then fall back to LLM voting
+        for the actual consensus decision.
+
+        Args:
+            answers: List of (agent_name, answer_text) tuples
+
+        Returns:
+            VoteResult with model assignments recorded in voting_strategy field
+        """
+        # Build model assignments: agent index -> NVIDIA model name
+        model_assignments: dict[int, str] = {}
+        if _NVIDIA_ROUTER_AVAILABLE:
+            try:
+                router = NvidiaRouter.instance()
+                role_map = {
+                    0: NvidiaRole.REASONING,
+                    1: NvidiaRole.CHAT,
+                    2: NvidiaRole.FAST,
+                }
+                for idx in range(len(answers)):
+                    role = role_map.get(idx, NvidiaRole.CHAT)
+                    model_assignments[idx] = router.get_model(role)
+                logger.info(
+                    f"MODEL_DIVERSITY assignments: "
+                    + ", ".join(
+                        f"agent[{i}]({answers[i][0]})={m}"
+                        for i, m in model_assignments.items()
+                        if i < len(answers)
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"MODEL_DIVERSITY: could not build model assignments: {e}")
+
+        # Delegate actual consensus to LLM voting
+        vote_result = await self._llm_vote(answers)
+
+        # Annotate the voting_strategy field to carry model assignment metadata
+        agent_model_map = {
+            answers[i][0]: model_assignments.get(i, "unknown")
+            for i in range(len(answers))
+        }
+        vote_result.voting_strategy = (
+            f"model_diversity|assignments={agent_model_map}"
+        )
+        return vote_result
+
     def _break_tie(
         self,
         tied_normalized: list[str],
@@ -577,6 +634,8 @@ Format:
             return await self._semantic_vote(answers)
         elif self.voting_strategy == VotingStrategy.LLM:
             return await self._llm_vote(answers)
+        elif self.voting_strategy == VotingStrategy.MODEL_DIVERSITY:
+            return await self._model_diversity_vote(answers)
         else:
             return self._exact_vote(answers)
 
@@ -686,6 +745,32 @@ Format:
             self._end_time = datetime.now(timezone.utc)
             total_duration = (self._end_time - self._start_time).total_seconds()
 
+            result_metadata: dict[str, Any] = {
+                "total_agents": len(agents),
+                "successful_agents": successful_count,
+                "failed_agents": len(self._results) - successful_count,
+                "voting_strategy": self.voting_strategy.value,
+                "tie_break": self.tie_break.value,
+                "similarity_threshold": self.similarity_threshold,
+            }
+
+            # For MODEL_DIVERSITY strategy, capture model assignments in metadata
+            if self.voting_strategy == VotingStrategy.MODEL_DIVERSITY and _NVIDIA_ROUTER_AVAILABLE:
+                try:
+                    router = NvidiaRouter.instance()
+                    role_map = {
+                        0: NvidiaRole.REASONING,
+                        1: NvidiaRole.CHAT,
+                        2: NvidiaRole.FAST,
+                    }
+                    model_assignments = {
+                        answers[i][0]: router.get_model(role_map.get(i, NvidiaRole.CHAT))
+                        for i in range(len(answers))
+                    }
+                    result_metadata["model_assignments"] = model_assignments
+                except Exception as _e:
+                    logger.warning(f"MODEL_DIVERSITY metadata: could not record assignments: {_e}")
+
             return ConsensusResult(
                 workflow_id=self.workflow_id,
                 status=status,
@@ -694,14 +779,7 @@ Format:
                 total_duration_seconds=total_duration,
                 start_time=self._start_time,
                 end_time=self._end_time,
-                metadata={
-                    "total_agents": len(agents),
-                    "successful_agents": successful_count,
-                    "failed_agents": len(self._results) - successful_count,
-                    "voting_strategy": self.voting_strategy.value,
-                    "tie_break": self.tie_break.value,
-                    "similarity_threshold": self.similarity_threshold,
-                },
+                metadata=result_metadata,
             )
 
         except Exception as e:
