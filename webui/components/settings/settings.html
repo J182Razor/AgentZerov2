@@ -58,6 +58,10 @@
                  :class="{'active': $store.settings.activeTab === 'nvidia'}"
                  @click="$store.settings.switchTab('nvidia')"
                  title="NVIDIA Models">NVIDIA Models</div>
+            <div class="settings-tab"
+                 :class="{'active': $store.settings.activeTab === 'telemetry'}"
+                 @click="$store.settings.switchTab('telemetry')"
+                 title="Telemetry">Telemetry</div>
           </div>
         </div>
 
@@ -85,6 +89,9 @@
                x-init="if ($store.settings.activeTab === 'nvidia') { $nextTick(() => window.NvidiaModels && window.NvidiaModels.init(document.getElementById('nvidia-models-container'))); }"
                @nvidia-models-tab-open.window="window.NvidiaModels && window.NvidiaModels.init(document.getElementById('nvidia-models-container'))">
             <x-component path="settings/nvidia/nvidia-settings.html"></x-component>
+          </div>
+          <div x-show="$store.settings.activeTab === 'telemetry'">
+            <x-component path="settings/telemetry/telemetry-dashboard.html"></x-component>
           </div>
         </div>
       </div>

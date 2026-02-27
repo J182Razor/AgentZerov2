@@ -152,6 +152,10 @@ def initialize_preload():
     import preload
     return defer.DeferredTask().start_task(preload.preload)
 
+def initialize_nightly_synthesis():
+    from python.helpers.nightly_synthesis import nightly_synthesis_loop
+    return defer.DeferredTask("NightlySynthesis").start_task(nightly_synthesis_loop)
+
 def initialize_migration():
     from python.helpers import migration, dotenv
     # run migration

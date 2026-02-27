@@ -6,7 +6,7 @@
   "local_embedding_model": "all-MiniLM-L6-v2",
   "enable_memvid": true,
   "enable_simplemem": true,
-  "enable_kg": false,
+  "enable_kg": true,
   "enable_compression": true,
   "rrf_k": 60,
   "default_k": 10,

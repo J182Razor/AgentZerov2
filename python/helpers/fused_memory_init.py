@@ -31,7 +31,7 @@ async def initialize_fused_memory():
  "local_embedding_model": "all-MiniLM-L6-v2",
  "enable_memvid": True,
  "enable_simplemem": True,
- "enable_kg": False,
+ "enable_kg": True,
  "enable_compression": True
  }
  import json
