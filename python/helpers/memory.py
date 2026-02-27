@@ -68,11 +68,11 @@ class Memory:
                 type="util",
                 heading=f"Initializing VectorDB in '/{memory_subdir}'",
             )
-            db, created = Memory.initialize(
-                log_item,
-                agent.config.embeddings_model,
-                memory_subdir,
-                False,
+            import asyncio
+            loop = asyncio.get_event_loop()
+            db, created = await loop.run_in_executor(
+                None,
+                lambda: Memory.initialize(log_item, agent.config.embeddings_model, memory_subdir, False)
             )
             Memory.index[memory_subdir] = db
             wrap = Memory(db, memory_subdir=memory_subdir)

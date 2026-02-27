@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/notification.css">
     <link rel="stylesheet" href="css/buttons.css">
     <link rel="stylesheet" href="css/tables.css">
+    <link rel="stylesheet" href="css/nvidia_models.css">
 
     <!-- Flatpickr for datetime picker -->
     <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css">
@@ -58,6 +59,14 @@
 
     <!-- Link the PWA manifest file -->
     <link rel="manifest" href="js/manifest.json">
+
+    <script type="module">
+        import '/webui/js/nvidia_models.js';
+        // Initialize when the NVIDIA Models tab is opened via custom event
+        document.addEventListener('nvidia-models-tab-open', () => {
+            window.NvidiaModels && window.NvidiaModels.init(document.getElementById('nvidia-models-container'));
+        });
+    </script>
 
     <script>
         // Expose git info for sidebar component

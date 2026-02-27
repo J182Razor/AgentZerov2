@@ -40,6 +40,15 @@ from python.helpers.localization import Localization
 from python.helpers.extension import call_extensions
 from python.helpers.errors import RepairableException
 
+try:
+    from python.helpers.profiling import timed as profile_async
+    _HAS_PROFILING = True
+except ImportError:
+    _HAS_PROFILING = False
+    def profile_async(name):
+        def decorator(f): return f
+        return decorator
+
 
 class AgentContextType(Enum):
     USER = "user"
@@ -385,6 +394,7 @@ class Agent:
 
         asyncio.run(self.call_extensions("agent_init"))
 
+    @profile_async("monologue")
     async def monologue(self):
         error_retries = 0  # counter for critical error retries
         while True:

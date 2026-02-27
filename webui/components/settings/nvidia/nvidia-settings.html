@@ -1,0 +1,33 @@
+<html>
+  <head>
+    <title>NVIDIA Models</title>
+  </head>
+
+  <body>
+    <div x-data>
+      <template x-if="$store.settings">
+        <div>
+          <nav>
+            <ul>
+              <li>
+                <a href="#section-nvidia-models">
+                  <img src="/public/chat_model.svg" alt="NVIDIA Models" />
+                  <span>Model Role Assignment</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+
+          <div id="section-nvidia-models" class="section">
+            <div class="section-title">NVIDIA Model Role Assignment</div>
+            <div class="section-description">
+              Assign NVIDIA NIM models to specific agent roles. Each role can use a different model and API key environment variable.
+              Use the Test button to verify connectivity, then Save &amp; Apply to persist changes.
+            </div>
+            <div id="nvidia-models-container"></div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </body>
+</html>

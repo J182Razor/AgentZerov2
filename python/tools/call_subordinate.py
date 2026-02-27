@@ -2,6 +2,7 @@ from agent import Agent, UserMessage
 from python.helpers.tool import Tool, Response
 from initialize import initialize_agent
 from python.extensions.hist_add_tool_result import _90_save_tool_call_file as save_tool_call_file
+from python.helpers.agent_pool import AgentPool
 
 
 class Delegation(Tool):
@@ -20,8 +21,17 @@ class Delegation(Tool):
             if agent_profile:
                 config.profile = agent_profile
 
-            # crate agent
-            sub = Agent(self.agent.number + 1, config, self.agent.context)
+            # Try pool first for faster spawn
+            try:
+                pool = AgentPool._instance if AgentPool._instance is not None else None
+                pooled = await pool.acquire(profile=agent_profile or "default") if pool else None
+            except Exception:
+                pooled = None
+
+            if pooled:
+                sub = pooled
+            else:
+                sub = Agent(self.agent.number + 1, config, self.agent.context)
             # register superior/subordinate
             sub.set_data(Agent.DATA_NAME_SUPERIOR, self.agent)
             self.agent.set_data(Agent.DATA_NAME_SUBORDINATE, sub)
