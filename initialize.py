@@ -1,13 +1,24 @@
+import hashlib, json
 from agent import AgentConfig
 import models
 from python.helpers import runtime, settings, defer
 from python.helpers.print_style import PrintStyle
+
+_settings_cache: dict[str, "AgentConfig"] = {}
+
+
+def _settings_hash(settings_dict: dict) -> str:
+    return hashlib.md5(json.dumps(settings_dict, sort_keys=True, default=str).encode()).hexdigest()
 
 
 def initialize_agent(override_settings: dict | None = None):
     current_settings = settings.get_settings()
     if override_settings:
         current_settings = settings.merge_settings(current_settings, override_settings)
+
+    h = _settings_hash(current_settings)
+    if h in _settings_cache:
+        return _settings_cache[h]
 
     def _normalize_model_kwargs(kwargs: dict) -> dict:
         # convert string values that represent valid Python numbers to numeric types
@@ -116,7 +127,8 @@ def initialize_agent(override_settings: dict | None = None):
     #             .print(f"Failed to update MCP settings: {e}")
     #         )
 
-    # return config object
+    # cache and return config object
+    _settings_cache[h] = config
     return config
 
 def initialize_chats():

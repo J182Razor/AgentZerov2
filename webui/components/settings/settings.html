@@ -54,6 +54,10 @@
                  :class="{'active': $store.settings.activeTab === 'backup'}"
                  @click="$store.settings.switchTab('backup')"
                  title="Backup & Restore">Backup & Restore</div>
+            <div class="settings-tab"
+                 :class="{'active': $store.settings.activeTab === 'nvidia'}"
+                 @click="$store.settings.switchTab('nvidia')"
+                 title="NVIDIA Models">NVIDIA Models</div>
           </div>
         </div>
 
@@ -76,6 +80,11 @@
           </div>
           <div x-show="$store.settings.activeTab === 'skills'">
             <x-component path="settings/skills/skills-settings.html"></x-component>
+          </div>
+          <div x-show="$store.settings.activeTab === 'nvidia'"
+               x-init="if ($store.settings.activeTab === 'nvidia') { $nextTick(() => window.NvidiaModels && window.NvidiaModels.init(document.getElementById('nvidia-models-container'))); }"
+               @nvidia-models-tab-open.window="window.NvidiaModels && window.NvidiaModels.init(document.getElementById('nvidia-models-container'))">
+            <x-component path="settings/nvidia/nvidia-settings.html"></x-component>
           </div>
         </div>
       </div>

@@ -101,6 +101,11 @@ chat:
     litellm_provider: openai
     kwargs:
       api_base: https://api.z.ai/api/coding/paas/v4
+  nvidia:
+    name: NVIDIA NIM
+    litellm_provider: openai
+    kwargs:
+      api_base: https://integrate.api.nvidia.com/v1
   other:
     name: Other OpenAI compatible
     litellm_provider: openai

@@ -1,47 +1,42 @@
 import asyncio
 import time
+from collections import deque
 from typing import Callable, Awaitable
 
 
 class RateLimiter:
     def __init__(self, seconds: int = 60, **limits: int):
         self.timeframe = seconds
-        self.limits = {key: value if isinstance(value, (int, float)) else 0 for key, value in (limits or {}).items()}
-        self.values = {key: [] for key in self.limits.keys()}
+        self.limits = {k: v if isinstance(v, (int, float)) else 0 for k, v in (limits or {}).items()}
+        self.values: dict[str, deque] = {k: deque() for k in self.limits}
         self._lock = asyncio.Lock()
 
     def add(self, **kwargs: int):
         now = time.time()
         for key, value in kwargs.items():
-            if not key in self.values:
-                self.values[key] = []
+            if key not in self.values:
+                self.values[key] = deque()
             self.values[key].append((now, value))
 
     async def cleanup(self):
         async with self._lock:
-            now = time.time()
-            cutoff = now - self.timeframe
+            cutoff = time.time() - self.timeframe
             for key in self.values:
-                self.values[key] = [(t, v) for t, v in self.values[key] if t > cutoff]
+                d = self.values[key]
+                while d and d[0][0] <= cutoff:
+                    d.popleft()
 
     async def get_total(self, key: str) -> int:
         async with self._lock:
-            if not key in self.values:
-                return 0
-            return sum(value for _, value in self.values[key])
+            return sum(v for _, v in self.values.get(key, []))
 
-    async def wait(
-        self,
-        callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None,
-    ):
+    async def wait(self, callback: Callable[[str, str, int, int], Awaitable[bool]] | None = None):
         while True:
             await self.cleanup()
             should_wait = False
-
             for key, limit in self.limits.items():
-                if limit <= 0:  # Skip if no limit set
+                if limit <= 0:
                     continue
-
                 total = await self.get_total(key)
                 if total > limit:
                     if callback:
@@ -50,8 +45,6 @@ class RateLimiter:
                     else:
                         should_wait = True
                     break
-
             if not should_wait:
                 break
-
             await asyncio.sleep(1)

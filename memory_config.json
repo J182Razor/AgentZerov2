@@ -16,5 +16,14 @@
     "kg": 0.2
   },
   "decay_threshold_days": 30,
-  "merge_similarity_threshold": 0.85
+  "merge_similarity_threshold": 0.85,
+  "nvidia_roles": {
+    "chat":      { "model": "qwen/qwen3.5-397b-a17b",                 "api_key_env": "NVIDIA_API_KEY_CHAT" },
+    "utility":   { "model": "minimaxai/minimax-m2.1",                 "api_key_env": "NVIDIA_API_KEY_UTILITY" },
+    "browser":   { "model": "moonshotai/kimi-k2.5",                   "api_key_env": "NVIDIA_API_KEY_BROWSER" },
+    "code":      { "model": "mistralai/devstral-2-123b-instruct-2512","api_key_env": "NVIDIA_API_KEY_CODE" },
+    "reasoning": { "model": "z-ai/glm5",                              "api_key_env": "NVIDIA_API_KEY_REASONING" },
+    "fast":      { "model": "stepfun-ai/step-3.5-flash",              "api_key_env": "NVIDIA_API_KEY_FAST" },
+    "embedding": { "model": "nvidia/nv-embed-v2",                     "api_key_env": "NVIDIA_API_KEY_EMBEDDING" }
+  }
 }

@@ -460,6 +460,12 @@ def run():
     for handler in handlers:
         register_api_handler(webapp, handler)
 
+    from python.api.nvidia_roles import get_nvidia_roles, update_nvidia_roles, test_nvidia_role, list_nvidia_models
+    webapp.route("/api/nvidia_roles", methods=["GET"])(get_nvidia_roles)
+    webapp.route("/api/nvidia_roles", methods=["PUT"])(update_nvidia_roles)
+    webapp.route("/api/nvidia_roles/test", methods=["POST"])(test_nvidia_role)
+    webapp.route("/api/nvidia_roles/models", methods=["GET"])(list_nvidia_models)
+
     handlers_by_namespace = _build_websocket_handlers_by_namespace(socketio_server, lock)
     configure_websocket_namespaces(
         webapp=webapp,
