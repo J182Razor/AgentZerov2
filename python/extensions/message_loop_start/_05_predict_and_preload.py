@@ -15,11 +15,20 @@ class PredictAndPreload(Extension):
             ctx_id = agent.context.id if hasattr(agent, 'context') else "default"
             predictor = get_predictor(ctx_id)
 
-            # Observe the current user message
+            # Observe the current user message from history.Message.content
             last_user_msg = ""
             if loop_data and hasattr(loop_data, 'user_message') and loop_data.user_message:
                 msg = loop_data.user_message
-                last_user_msg = str(getattr(msg, 'message', msg) or '')
+                content = getattr(msg, 'content', None)
+                if isinstance(content, str):
+                    last_user_msg = content
+                elif isinstance(content, list):
+                    last_user_msg = ' '.join(
+                        item if isinstance(item, str) else item.get('text', '') if isinstance(item, dict) else ''
+                        for item in content
+                    )
+                elif content is not None:
+                    last_user_msg = str(content)
 
             if last_user_msg:
                 predictor.observe(last_user_msg)

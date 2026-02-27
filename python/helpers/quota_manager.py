@@ -14,6 +14,8 @@ class QuotaState:
     model: str
     requests_remaining: int = 10_000
     tokens_remaining: int = 1_000_000
+    requests_limit: int = 10_000      # initial limit from x-ratelimit-limit-requests
+    tokens_limit: int = 1_000_000     # initial limit from x-ratelimit-limit-tokens
     reset_at: float = 0.0        # unix timestamp
     last_updated: float = field(default_factory=time.time)
 
@@ -55,6 +57,16 @@ class QuotaManager:
         with self._lock:
             state = self._states.setdefault(model, QuotaState(model=model))
             # Standard NVIDIA NIM / OpenAI-compatible headers
+            if "x-ratelimit-limit-requests" in headers:
+                try:
+                    state.requests_limit = int(headers["x-ratelimit-limit-requests"])
+                except (ValueError, TypeError):
+                    pass
+            if "x-ratelimit-limit-tokens" in headers:
+                try:
+                    state.tokens_limit = int(headers["x-ratelimit-limit-tokens"])
+                except (ValueError, TypeError):
+                    pass
             if "x-ratelimit-remaining-requests" in headers:
                 try:
                     state.requests_remaining = int(headers["x-ratelimit-remaining-requests"])
@@ -78,11 +90,12 @@ class QuotaManager:
             state = self._states.get(model)
             if not state:
                 return True   # unknown = assume healthy
-            req_ok  = state.requests_remaining > (state.requests_remaining * self.REQUEST_WARN_PCT)
-            tok_ok  = state.tokens_remaining   > (state.tokens_remaining   * self.TOKEN_WARN_PCT)
-            # Also check reset window hasn't passed
+            # Check reset window — if quota period elapsed, treat as reset
             if state.reset_at and time.time() > state.reset_at:
-                return True   # quota should have reset
+                return True
+            # Compare remaining against the observed initial limit * threshold
+            req_ok = state.requests_remaining > (state.requests_limit * self.REQUEST_WARN_PCT)
+            tok_ok = state.tokens_remaining   > (state.tokens_limit   * self.TOKEN_WARN_PCT)
             return req_ok and tok_ok
 
     def get_fallback(self, model: str) -> str | None:

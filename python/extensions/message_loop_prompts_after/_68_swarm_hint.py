@@ -16,11 +16,20 @@ class SwarmHint(Extension):
         try:
             from python.helpers.task_complexity import score_task, SWARM_THRESHOLD
 
-            # Get the user message text
+            # Get the user message text from history.Message.content
             last_user_msg = ""
             if loop_data and hasattr(loop_data, 'user_message') and loop_data.user_message:
                 msg = loop_data.user_message
-                last_user_msg = str(getattr(msg, 'message', msg) or '')
+                content = getattr(msg, 'content', None)
+                if isinstance(content, str):
+                    last_user_msg = content
+                elif isinstance(content, list):
+                    last_user_msg = ' '.join(
+                        item if isinstance(item, str) else item.get('text', '') if isinstance(item, dict) else ''
+                        for item in content
+                    )
+                elif content is not None:
+                    last_user_msg = str(content)
 
             if not last_user_msg or len(last_user_msg) < 20:
                 return

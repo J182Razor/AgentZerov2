@@ -12,7 +12,7 @@ EVOLUTION_LOG_DIR = "knowledge/prompt_evolution"
 MIN_ITERATIONS_TO_SCORE = 2    # only score if agent did real work
 
 
-class Extension(Extension):
+class PromptEvolution(Extension):
     async def execute(self, loop_data=None, **kwargs):
         try:
             agent = self.agent
