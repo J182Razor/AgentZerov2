@@ -1,0 +1,291 @@
+<html>
+<head>
+  <title>Telemetry Dashboard</title>
+</head>
+
+<body>
+<div x-data="telemetryDashboard()" x-init="fetchTelemetry()">
+  <nav>
+    <ul>
+      <li>
+        <a href="#section-telemetry-overview">
+          <span class="material-symbols-outlined">monitoring</span>
+          <span>Overview</span>
+        </a>
+      </li>
+      <li>
+        <a href="#section-telemetry-roles">
+          <span class="material-symbols-outlined">groups</span>
+          <span>Per-Role Metrics</span>
+        </a>
+      </li>
+      <li>
+        <a href="#section-telemetry-quota">
+          <span class="material-symbols-outlined">speed</span>
+          <span>Quota Status</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Overview Section -->
+  <div id="section-telemetry-overview" class="section">
+    <div class="section-title">Telemetry Overview</div>
+    <div class="section-description">
+      Real-time observability for LLM calls across all agent roles. Data is collected over a 24-hour rolling window.
+    </div>
+
+    <div class="telemetry-stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Calls</div>
+        <div class="stat-value" x-text="totalCalls"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Errors</div>
+        <div class="stat-value stat-error" x-text="totalErrors"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Latency</div>
+        <div class="stat-value" x-text="avgLatency + ' ms'"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Tokens</div>
+        <div class="stat-value" x-text="formatTokens(totalTokensIn + totalTokensOut)"></div>
+      </div>
+    </div>
+
+    <div class="telemetry-actions">
+      <button class="btn btn-sm" @click="fetchTelemetry()">
+        <span class="material-symbols-outlined">refresh</span> Refresh
+      </button>
+      <span class="telemetry-timestamp" x-text="'Last updated: ' + lastUpdated"></span>
+    </div>
+  </div>
+
+  <!-- Per-Role Metrics Section -->
+  <div id="section-telemetry-roles" class="section">
+    <div class="section-title">Per-Role Metrics</div>
+    <div class="section-description">
+      Breakdown of LLM performance by agent role. Includes call counts, token usage, latency percentiles, and success rates.
+    </div>
+
+    <div class="telemetry-table-wrapper">
+      <table class="telemetry-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Model</th>
+            <th>Calls</th>
+            <th>Errors</th>
+            <th>Success Rate</th>
+            <th>Tokens In</th>
+            <th>Tokens Out</th>
+            <th>Avg Latency</th>
+            <th>P95 Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="role in roles" :key="role.role">
+            <tr>
+              <td><span class="role-badge" x-text="role.role"></span></td>
+              <td class="model-name" x-text="role.model"></td>
+              <td x-text="role.calls"></td>
+              <td :class="{'stat-error': role.errors > 0}" x-text="role.errors"></td>
+              <td>
+                <span class="success-rate" :class="{'rate-good': role.success_rate >= 0.95, 'rate-warn': role.success_rate >= 0.8 && role.success_rate < 0.95, 'rate-bad': role.success_rate < 0.8}"
+                      x-text="(role.success_rate * 100).toFixed(1) + '%'"></span>
+              </td>
+              <td x-text="formatTokens(role.tokens_in)"></td>
+              <td x-text="formatTokens(role.tokens_out)"></td>
+              <td x-text="role.avg_latency_ms.toFixed(0) + ' ms'"></td>
+              <td x-text="role.p95_latency_ms.toFixed(0) + ' ms'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      <div x-show="roles.length === 0" class="no-data">No telemetry data collected yet. Metrics appear after the first LLM call.</div>
+    </div>
+  </div>
+
+  <!-- Quota Status Section -->
+  <div id="section-telemetry-quota" class="section">
+    <div class="section-title">Quota Status</div>
+    <div class="section-description">
+      NVIDIA API quota tracking per model. Shows remaining requests/tokens and health status.
+    </div>
+
+    <div class="telemetry-table-wrapper">
+      <table class="telemetry-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Requests Left</th>
+            <th>Tokens Left</th>
+            <th>Healthy</th>
+            <th>Fallback</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(info, model) in quota" :key="model">
+            <tr>
+              <td class="model-name" x-text="model"></td>
+              <td x-text="info.requests_remaining.toLocaleString()"></td>
+              <td x-text="info.tokens_remaining.toLocaleString()"></td>
+              <td>
+                <span class="health-indicator" :class="info.healthy ? 'healthy' : 'unhealthy'"
+                      x-text="info.healthy ? 'OK' : 'LOW'"></span>
+              </td>
+              <td x-text="info.fallback || '—'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      <div x-show="Object.keys(quota).length === 0" class="no-data">No quota data available. Quota tracking activates after NVIDIA API responses are received.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function telemetryDashboard() {
+  return {
+    roles: [],
+    quota: {},
+    totalCalls: 0,
+    totalErrors: 0,
+    avgLatency: 0,
+    totalTokensIn: 0,
+    totalTokensOut: 0,
+    lastUpdated: '—',
+
+    async fetchTelemetry() {
+      try {
+        const [telResp, quotaResp] = await Promise.all([
+          fetch('/api/telemetry'),
+          fetch('/api/quota').catch(() => ({ ok: false })),
+        ]);
+
+        if (telResp.ok) {
+          const data = await telResp.json();
+          this.roles = data.roles || [];
+          this.totalCalls = this.roles.reduce((s, r) => s + r.calls, 0);
+          this.totalErrors = this.roles.reduce((s, r) => s + r.errors, 0);
+          this.totalTokensIn = this.roles.reduce((s, r) => s + r.tokens_in, 0);
+          this.totalTokensOut = this.roles.reduce((s, r) => s + r.tokens_out, 0);
+          const latencies = this.roles.filter(r => r.calls > 0).map(r => r.avg_latency_ms);
+          this.avgLatency = latencies.length > 0
+            ? (latencies.reduce((s, l) => s + l, 0) / latencies.length).toFixed(0)
+            : 0;
+          this.lastUpdated = data.generated_at
+            ? new Date(data.generated_at).toLocaleTimeString()
+            : new Date().toLocaleTimeString();
+        }
+
+        if (quotaResp.ok) {
+          this.quota = await quotaResp.json();
+        }
+      } catch (e) {
+        console.warn('Telemetry fetch failed:', e);
+      }
+    },
+
+    formatTokens(n) {
+      if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+      if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+      return String(n);
+    }
+  };
+}
+</script>
+
+<style>
+.telemetry-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.stat-card {
+  background: var(--color-bg-secondary, #1a1a2e);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #999);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #eee);
+  margin-top: 0.25rem;
+}
+.stat-error { color: var(--color-error, #e74c3c); }
+
+.telemetry-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+.telemetry-timestamp {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #999);
+}
+
+.telemetry-table-wrapper { overflow-x: auto; }
+.telemetry-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.telemetry-table th, .telemetry-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border, #333);
+}
+.telemetry-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary, #999);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.role-badge {
+  background: var(--color-accent, #4a6cf7);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.model-name { font-family: monospace; font-size: 0.8rem; }
+
+.success-rate { font-weight: 600; }
+.rate-good { color: #2ecc71; }
+.rate-warn { color: #f39c12; }
+.rate-bad { color: #e74c3c; }
+
+.health-indicator {
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.health-indicator.healthy { background: #1a3a1a; color: #2ecc71; }
+.health-indicator.unhealthy { background: #3a1a1a; color: #e74c3c; }
+
+.no-data {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-secondary, #999);
+  font-style: italic;
+}
+</style>
+</body>
+</html>

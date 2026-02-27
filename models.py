@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import logging
 import os
+import time
 from typing import (
     Any,
     Awaitable,
@@ -196,6 +197,18 @@ class ChatGenerationResult:
 
 rate_limiters: dict[str, RateLimiter] = {}
 api_keys_round_robin: dict[str, int] = {}
+
+# Model instance cache: avoids recreating wrapper objects for identical configs
+_model_instance_cache: dict[str, Any] = {}
+_MODEL_CACHE_MAX = 32
+
+
+def _model_cache_key(kind: str, provider: str, name: str, kwargs: dict) -> str:
+    """Deterministic cache key for model instances."""
+    import hashlib, json
+    kw_str = json.dumps(kwargs, sort_keys=True, default=str)
+    raw = f"{kind}|{provider}|{name}|{kw_str}"
+    return hashlib.md5(raw.encode()).hexdigest()
 
 
 def get_api_key(service: str) -> str:
@@ -478,6 +491,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
     ) -> Tuple[str, str]:
 
         turn_off_logging()
+        _telemetry_start = time.time()
 
         if not messages:
             messages = []
@@ -559,7 +573,30 @@ class LiteLLMChatWrapper(SimpleChatModel):
                         if output["reasoning_delta"]:
                             limiter.add(output=approximate_tokens(output["reasoning_delta"]))
 
-                # Successful completion of stream
+                # Successful completion — record telemetry + quota tracking
+                try:
+                    from python.helpers.telemetry import TelemetryCollector
+                    _elapsed = (time.time() - _telemetry_start) * 1000
+                    _role = kwargs.get("a0_role", "chat")
+                    TelemetryCollector.instance().record(
+                        model=self.model_name, role=_role, latency_ms=_elapsed,
+                        input_tokens=approximate_tokens(str(msgs_conv)),
+                        output_tokens=approximate_tokens(result.response + result.reasoning),
+                    )
+                except Exception:
+                    pass
+                # Update quota manager from response headers if available
+                try:
+                    from python.helpers.quota_manager import QuotaManager
+                    _resp_headers = {}
+                    if not stream and hasattr(_completion, '_headers'):
+                        _resp_headers = dict(_completion._headers)
+                    elif not stream and hasattr(_completion, 'headers'):
+                        _resp_headers = dict(_completion.headers)
+                    if _resp_headers:
+                        QuotaManager.instance().update_from_headers(self.model_name, _resp_headers)
+                except Exception:
+                    pass
                 return result.response, result.reasoning
 
             except Exception as e:
@@ -567,6 +604,17 @@ class LiteLLMChatWrapper(SimpleChatModel):
 
                 # Retry only if no chunks received and error is transient
                 if got_any_chunk or not _is_transient_litellm_error(e) or attempt >= max_retries:
+                    # Record error telemetry
+                    try:
+                        from python.helpers.telemetry import TelemetryCollector
+                        _elapsed = (time.time() - _telemetry_start) * 1000
+                        _role = kwargs.get("a0_role", "chat")
+                        TelemetryCollector.instance().record(
+                            model=self.model_name, role=_role, latency_ms=_elapsed,
+                            success=False, error=str(e)[:200],
+                        )
+                    except Exception:
+                        pass
                     raise
                 attempt += 1
                 await asyncio.sleep(retry_delay_s)
@@ -906,9 +954,16 @@ def get_chat_model(
 ) -> LiteLLMChatWrapper:
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
-    return _get_litellm_chat(
+    ckey = _model_cache_key("chat", provider_name, name, kwargs)
+    if ckey in _model_instance_cache:
+        return _model_instance_cache[ckey]
+    inst = _get_litellm_chat(
         LiteLLMChatWrapper, name, provider_name, model_config, **kwargs
     )
+    if len(_model_instance_cache) >= _MODEL_CACHE_MAX:
+        _model_instance_cache.pop(next(iter(_model_instance_cache)), None)
+    _model_instance_cache[ckey] = inst
+    return inst
 
 
 def get_browser_model(
@@ -916,9 +971,16 @@ def get_browser_model(
 ) -> BrowserCompatibleChatWrapper:
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
-    return _get_litellm_chat(
+    ckey = _model_cache_key("browser", provider_name, name, kwargs)
+    if ckey in _model_instance_cache:
+        return _model_instance_cache[ckey]
+    inst = _get_litellm_chat(
         BrowserCompatibleChatWrapper, name, provider_name, model_config, **kwargs
     )
+    if len(_model_instance_cache) >= _MODEL_CACHE_MAX:
+        _model_instance_cache.pop(next(iter(_model_instance_cache)), None)
+    _model_instance_cache[ckey] = inst
+    return inst
 
 
 def get_embedding_model(
@@ -926,4 +988,11 @@ def get_embedding_model(
 ) -> LiteLLMEmbeddingWrapper | LocalSentenceTransformerWrapper:
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("embedding", orig, kwargs)
-    return _get_litellm_embedding(name, provider_name, model_config, **kwargs)
+    ckey = _model_cache_key("embed", provider_name, name, kwargs)
+    if ckey in _model_instance_cache:
+        return _model_instance_cache[ckey]
+    inst = _get_litellm_embedding(name, provider_name, model_config, **kwargs)
+    if len(_model_instance_cache) >= _MODEL_CACHE_MAX:
+        _model_instance_cache.pop(next(iter(_model_instance_cache)), None)
+    _model_instance_cache[ckey] = inst
+    return inst

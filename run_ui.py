@@ -465,9 +465,10 @@ def run():
     webapp.route("/api/nvidia_roles", methods=["PUT"])(update_nvidia_roles)
     webapp.route("/api/nvidia_roles/test", methods=["POST"])(test_nvidia_role)
     webapp.route("/api/nvidia_roles/models", methods=["GET"])(list_nvidia_models)
-    from python.api.telemetry_export import get_telemetry, get_telemetry_prometheus
+    from python.api.telemetry_export import get_telemetry, get_telemetry_prometheus, get_quota
     webapp.route("/api/telemetry", methods=["GET"])(get_telemetry)
     webapp.route("/api/telemetry/prometheus", methods=["GET"])(get_telemetry_prometheus)
+    webapp.route("/api/quota", methods=["GET"])(get_quota)
 
     handlers_by_namespace = _build_websocket_handlers_by_namespace(socketio_server, lock)
     configure_websocket_namespaces(
@@ -559,6 +560,8 @@ def init_a0():
     initialize.initialize_job_loop()
     # preload
     initialize.initialize_preload()
+    # nightly synthesis (daily batch optimization)
+    initialize.initialize_nightly_synthesis()
 
 
 # run the internal server
