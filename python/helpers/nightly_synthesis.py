@@ -151,7 +151,11 @@ def run_synthesis() -> SynthesisReport:
 
 
 async def nightly_synthesis_loop():
-    """Async loop that runs synthesis once per day."""
+    """Async loop that runs synthesis once per day.
+
+    Intentionally runs immediately on startup (so the first report is available
+    right away), then sleeps SYNTHESIS_INTERVAL_HOURS before each subsequent run.
+    """
     import asyncio
     while True:
         try:

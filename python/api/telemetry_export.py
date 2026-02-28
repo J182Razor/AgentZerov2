@@ -1,6 +1,7 @@
 """Telemetry export API — JSON, Prometheus, and Quota formats."""
 from flask import request, jsonify, Response
 from python.helpers.telemetry import TelemetryCollector
+from python.helpers.quota_manager import QuotaManager
 
 
 async def get_telemetry():
@@ -18,7 +19,6 @@ async def get_telemetry_prometheus():
 async def get_quota():
     """GET /api/quota — returns per-model quota status from QuotaManager."""
     try:
-        from python.helpers.quota_manager import QuotaManager
         return jsonify(QuotaManager.instance().to_dict())
     except Exception:
         return jsonify({})

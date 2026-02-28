@@ -589,10 +589,20 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 try:
                     from python.helpers.quota_manager import QuotaManager
                     _resp_headers = {}
-                    if not stream and hasattr(_completion, '_headers'):
-                        _resp_headers = dict(_completion._headers)
-                    elif not stream and hasattr(_completion, 'headers'):
-                        _resp_headers = dict(_completion.headers)
+                    if not stream:
+                        # LiteLLM stores headers in _hidden_params (primary path)
+                        if hasattr(_completion, '_hidden_params'):
+                            _hidden = _completion._hidden_params or {}
+                            _resp_headers = (
+                                _hidden.get('additional_headers') or
+                                _hidden.get('headers') or
+                                {}
+                            )
+                        # Fallback: some response objects expose headers directly
+                        if not _resp_headers and hasattr(_completion, '_headers'):
+                            _resp_headers = dict(_completion._headers)
+                        elif not _resp_headers and hasattr(_completion, 'headers'):
+                            _resp_headers = dict(_completion.headers)
                     if _resp_headers:
                         QuotaManager.instance().update_from_headers(self.model_name, _resp_headers)
                 except Exception:

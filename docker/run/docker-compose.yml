@@ -1,8 +1,64 @@
 services:
   agent-zero:
     container_name: agent-zero
-    image: agent0ai/agent-zero:latest
-    volumes:
-      - ./agent-zero:/a0
+    # Build from local source so all custom features (telemetry, quota manager,
+    # nightly synthesis, auto-skill creation, swarm hint, etc.) are baked in.
+    # Run from the repo root:  docker compose -f docker/run/docker-compose.yml up --build
+    build:
+      context: ../../
+      dockerfile: DockerfileLocal
+      args:
+        BRANCH: local
+        CACHE_DATE: ${CACHE_DATE:-none}
+    image: agent-zero-local
+    restart: unless-stopped
+
     ports:
-      - "50080:80"
+      - "${WEB_UI_PORT:-50080}:80"   # Agent Zero web UI
+      - "${SSH_PORT:-50022}:22"      # SSH code execution (optional)
+
+    volumes:
+      # Persistent agent data: chats, memory, user settings, skills, knowledge
+      - ./agent-zero:/a0
+      # Named volumes so new-feature data survives container rebuilds
+      - a0_knowledge:/a0/knowledge
+      - a0_skills:/a0/usr/skills
+      - a0_logs:/a0/logs
+
+    environment:
+      # ── Web UI ────────────────────────────────────────────────────────────
+      WEB_UI_PORT: "80"
+      WEB_UI_HOST: "0.0.0.0"
+
+      # ── Auth (leave blank to disable login prompt) ─────────────────────
+      AUTH_LOGIN: "${AUTH_LOGIN:-}"
+      AUTH_PASSWORD: "${AUTH_PASSWORD:-}"
+
+      # ── Flask ──────────────────────────────────────────────────────────
+      FLASK_SECRET_KEY: "${FLASK_SECRET_KEY:-}"
+
+      # ── NVIDIA NIM / quota manager ─────────────────────────────────────
+      # Quota headers are read from API responses automatically; this key
+      # is passed to LiteLLM via agent settings, not directly here.
+      # Set it in Settings → Chat Model or in your .env file.
+      # NVIDIA_NIM_API_KEY: "${NVIDIA_NIM_API_KEY:-}"
+
+      # ── Telemetry & nightly synthesis ─────────────────────────────────
+      # No extra env vars required; synthesis writes to /a0/knowledge/nightly_synthesis
+      # and prompt evolution scores to /a0/knowledge/prompt_evolution/scores.jsonl.
+      # Both paths are covered by the a0_knowledge named volume above.
+
+      # ── Misc ──────────────────────────────────────────────────────────
+      TOKENIZERS_PARALLELISM: "false"
+      TZ: "UTC"
+
+    # Optional: resource limits to prevent OOM
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4g
+
+volumes:
+  a0_knowledge:
+  a0_skills:
+  a0_logs:

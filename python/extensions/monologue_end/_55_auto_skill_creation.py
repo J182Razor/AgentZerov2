@@ -12,6 +12,7 @@ from agent import LoopData
 
 AUTO_SKILLS_DIR = "usr/skills/auto-generated"
 MIN_TOOL_STEPS = 3           # Only create skill if task used >= 3 tool calls
+MIN_ITERATIONS = 3           # Also require >= 3 message loop iterations (cheap early-exit guard)
 SKILL_TEMPLATE = """\
 ---
 name: "{name}"
@@ -39,8 +40,9 @@ class AutoSkillCreation(Extension):
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs):
         try:
             agent = self.agent
-            # Only trigger when a response (task completion) just happened
-            if not loop_data or loop_data.iteration < MIN_TOOL_STEPS:
+            # Only trigger after enough message loop iterations (early-exit guard; tool count
+            # is checked below as the authoritative metric)
+            if not loop_data or loop_data.iteration < MIN_ITERATIONS:
                 return
 
             # Collect tool calls from this monologue's history
