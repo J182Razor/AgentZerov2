@@ -26,7 +26,7 @@ class QuotaManager:
     Warns before limits are hit and suggests fallback models.
     """
     _instance: "QuotaManager | None" = None
-    _lock = threading.Lock()
+    _lock = threading.RLock()  # RLock allows re-entrant locking from to_dict()
 
     # Trigger warnings at these thresholds
     REQUEST_WARN_PCT = 0.15    # warn when <15% requests remain
@@ -43,7 +43,7 @@ class QuotaManager:
 
     def __init__(self):
         self._states: dict[str, QuotaState] = {}
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # RLock: to_dict() holds lock while calling is_healthy/get_fallback
 
     @classmethod
     def instance(cls) -> "QuotaManager":

@@ -16,7 +16,9 @@ class PromptEvolution(Extension):
     async def execute(self, loop_data=None, **kwargs):
         try:
             agent = self.agent
-            loop_data = getattr(agent, 'loop_data', None)
+            # Fetch fresh loop_data from agent state; the passed parameter may be
+            # stale by the time process_chain_end fires.
+            loop_data = getattr(agent, 'loop_data', None) or loop_data
             if not loop_data:
                 return
             iterations = getattr(loop_data, 'iteration', 0)
