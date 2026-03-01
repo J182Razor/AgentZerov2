@@ -4,9 +4,12 @@ Wraps the SimpleMem REST API for dialogue compression and intent-aware retrieval
 """
 from __future__ import annotations
 import os
-import json
-import aiohttp
 from python.helpers.print_style import PrintStyle
+
+try:
+    import aiohttp as _aiohttp
+except ImportError:
+    _aiohttp = None  # type: ignore
 
 SIMPLEMEM_URL = os.environ.get("SIMPLEMEM_URL", "http://localhost:8765")
 
@@ -27,11 +30,11 @@ class SimpleMemClient:
     async def add_dialogue(self, session_id: str, role: str, content: str) -> dict:
         """Add a dialogue turn for semantic compression."""
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.base_url}/api/dialogue",
                     json={"session_id": session_id, "role": role, "content": content},
-                    timeout=aiohttp.ClientTimeout(total=10),
+                    timeout=_aiohttp.ClientTimeout(total=10),
                 ) as resp:
                     return await resp.json()
         except Exception as e:
@@ -41,11 +44,11 @@ class SimpleMemClient:
     async def finalize(self, session_id: str) -> dict:
         """Trigger semantic compression for a session."""
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.base_url}/api/finalize",
                     json={"session_id": session_id},
-                    timeout=aiohttp.ClientTimeout(total=30),
+                    timeout=_aiohttp.ClientTimeout(total=30),
                 ) as resp:
                     return await resp.json()
         except Exception as e:
@@ -55,11 +58,11 @@ class SimpleMemClient:
     async def ask(self, session_id: str, query: str, limit: int = 5) -> dict:
         """Intent-aware retrieval from compressed memory."""
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.get(
                     f"{self.base_url}/api/ask",
                     params={"session_id": session_id, "query": query, "limit": str(limit)},
-                    timeout=aiohttp.ClientTimeout(total=10),
+                    timeout=_aiohttp.ClientTimeout(total=10),
                 ) as resp:
                     return await resp.json()
         except Exception as e:
@@ -69,10 +72,10 @@ class SimpleMemClient:
     async def health(self) -> bool:
         """Check if SimpleMem server is reachable."""
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.get(
                     f"{self.base_url}/health",
-                    timeout=aiohttp.ClientTimeout(total=3),
+                    timeout=_aiohttp.ClientTimeout(total=3),
                 ) as resp:
                     return resp.status == 200
         except Exception:

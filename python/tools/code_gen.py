@@ -1,6 +1,10 @@
 import os
-import aiohttp
 from python.helpers.tool import Tool, Response
+
+try:
+    import aiohttp as _aiohttp
+except ImportError:
+    _aiohttp = None  # type: ignore
 
 
 class CodeGen(Tool):
@@ -10,6 +14,9 @@ class CodeGen(Tool):
     MAX_RESPONSE_LENGTH = 8000
 
     async def execute(self, **kwargs) -> Response:
+        if _aiohttp is None:
+            return Response(message="Error: 'aiohttp' is not installed. Run: pip install aiohttp", break_loop=False)
+
         method = self.method if hasattr(self, "method") and self.method else "paper2code"
 
         if method == "paper2code":
@@ -46,14 +53,14 @@ class CodeGen(Tool):
             payload["paper_text"] = paper_text
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.DEEPCODE_BASE_URL}/api/paper2code",
                     json=payload,
                 ) as resp:
                     result = await resp.text()
                     return Response(message=self._truncate(result), break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to DeepCode server at {self.DEEPCODE_BASE_URL}. "
                         "Please ensure the DeepCode server is running.",
@@ -71,14 +78,14 @@ class CodeGen(Tool):
             )
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.DEEPCODE_BASE_URL}/api/text2web",
                     json={"description": description},
                 ) as resp:
                     result = await resp.text()
                     return Response(message=self._truncate(result), break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to DeepCode server at {self.DEEPCODE_BASE_URL}. "
                         "Please ensure the DeepCode server is running.",
@@ -96,14 +103,14 @@ class CodeGen(Tool):
             )
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.DEEPCODE_BASE_URL}/api/text2backend",
                     json={"spec": spec},
                 ) as resp:
                     result = await resp.text()
                     return Response(message=self._truncate(result), break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to DeepCode server at {self.DEEPCODE_BASE_URL}. "
                         "Please ensure the DeepCode server is running.",

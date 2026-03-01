@@ -1,5 +1,4 @@
 import os
-import json
 from python.helpers.tool import Tool, Response
 
 
@@ -27,7 +26,8 @@ class VideoGen(Tool):
         style = self.args.get("style", "cinematic") or kwargs.get("style", "cinematic")
         duration = self.args.get("duration", "60") or kwargs.get("duration", "60")
 
-        prompt = f"""You are a professional video director and storyboard artist. Given a creative idea, produce a detailed, structured storyboard for a {duration}-second video in a {style} style.
+        system = "You are a professional video director and storyboard artist. Respond only with valid JSON — no explanation, no markdown fences."
+        prompt = f"""Given the creative idea below, produce a detailed structured storyboard for a {duration}-second video in a {style} style.
 
 Creative Idea: {idea}
 
@@ -64,7 +64,7 @@ Create enough scenes to fill the {duration}-second duration. Be specific and viv
 """
 
         try:
-            response = await self.agent.call_utility_model(prompt)
+            response = await self.agent.call_utility_model(system=system, message=prompt)
             storyboard_text = str(response) if response else ""
 
             if not storyboard_text:
@@ -101,7 +101,8 @@ Create enough scenes to fill the {duration}-second duration. Be specific and viv
 
         format_type = self.args.get("format", "narrative") or kwargs.get("format", "narrative")
 
-        prompt = f"""You are a professional film director breaking down a script into production-ready scene descriptions. Analyze the following script and create a detailed scene-by-scene breakdown.
+        system = "You are a professional film director. Break down scripts into production-ready scene descriptions. Respond only with valid JSON — no explanation, no markdown fences."
+        prompt = f"""Analyze the following script and create a detailed scene-by-scene breakdown.
 
 Script/Screenplay:
 {script}
@@ -152,7 +153,7 @@ Be thorough in the visual descriptions. Each scene's 'gen_prompt' should be a se
 """
 
         try:
-            response = await self.agent.call_utility_model(prompt)
+            response = await self.agent.call_utility_model(system=system, message=prompt)
             breakdown_text = str(response) if response else ""
 
             if not breakdown_text:

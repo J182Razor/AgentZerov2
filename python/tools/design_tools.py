@@ -1,6 +1,4 @@
 import os
-import json
-import tempfile
 from python.helpers.tool import Tool, Response
 
 
@@ -34,7 +32,8 @@ class DesignTools(Tool):
         with open(tmp_file, "w") as f:
             f.write(f"# Product Brief\n\n{description}\n")
 
-        prompt = f"""You are a senior product designer. Given the following product description, generate a structured design plan.
+        system = "You are a senior product designer. Respond with structured design plans in Markdown."
+        prompt = f"""Given the following product description, generate a structured design plan.
 
 Product Description:
 {description}
@@ -61,7 +60,7 @@ Respond with a structured plan in the following format:
 """
 
         try:
-            response = await self.agent.call_utility_model(prompt)
+            response = await self.agent.call_utility_model(system=system, message=prompt)
             result_text = str(response) if response else "No response from utility model."
             result = f"Design plan saved to: {tmp_file}\n\n{result_text}"
             return Response(message=result[:4000], break_loop=False)
@@ -134,7 +133,8 @@ const puppeteer = require('puppeteer');
                 break_loop=False,
             )
 
-        prompt = f"""You are a design systems engineer preparing a developer handoff document. Given the following design specifications, create a structured, implementation-ready handoff document.
+        system = "You are a design systems engineer. Create structured, implementation-ready developer handoff documents in Markdown."
+        prompt = f"""Given the following design specifications, create a structured developer handoff document.
 
 Design Specifications:
 {specs}
@@ -164,7 +164,7 @@ Format the handoff document with the following sections:
 """
 
         try:
-            response = await self.agent.call_utility_model(prompt)
+            response = await self.agent.call_utility_model(system=system, message=prompt)
             result_text = str(response) if response else "No response from utility model."
 
             # Save handoff document
