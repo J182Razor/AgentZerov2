@@ -13,7 +13,8 @@
       "Bash(docker login:*)",
       "Bash(docker build:*)",
       "Bash(ls:*)",
-      "Bash(docker:*)"
+      "Bash(docker:*)",
+      "Bash(python:*)"
     ]
   }
 }
