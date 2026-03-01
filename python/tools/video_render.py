@@ -28,7 +28,8 @@ class VideoRender(Tool):
         width = self.args.get("width", 1920) or kwargs.get("width", 1920)
         height = self.args.get("height", 1080) or kwargs.get("height", 1080)
 
-        prompt = f"""You are an expert Remotion (React video framework) developer. Generate a complete Remotion component based on the following description.
+        system = "You are an expert Remotion (React video framework) developer. Generate complete, runnable Remotion components as raw TSX code only — no explanation, no markdown fences."
+        prompt = f"""Generate a complete Remotion component based on the following description.
 
 Description: {description}
 
@@ -44,7 +45,7 @@ Generate ONLY the complete React/Remotion component code, ready to save as a .ts
 """
 
         try:
-            response = await self.agent.call_utility_model(prompt)
+            response = await self.agent.call_utility_model(system=system, message=prompt)
             component_code = str(response) if response else ""
 
             if not component_code:

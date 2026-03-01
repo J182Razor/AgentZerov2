@@ -23,9 +23,11 @@ class SimpleMemCompress(Extension):
             session_id = agent.context.id if agent.context else "default"
 
             # Send recent dialogue for compression
-            for msg in agent.history[-10:]:
-                role = getattr(msg, "role", "user")
-                content = str(getattr(msg, "content", "") or "")[:500]
+            # agent.history.output() returns list[OutputMessage] (TypedDict with "ai" and "content" keys)
+            for msg in agent.history.output()[-10:]:
+                role = "assistant" if msg.get("ai", False) else "user"
+                raw = msg.get("content", "")
+                content = (raw if isinstance(raw, str) else str(raw))[:500]
                 if content:
                     await client.add_dialogue(session_id, role, content)
 

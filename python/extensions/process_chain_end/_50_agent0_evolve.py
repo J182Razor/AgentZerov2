@@ -20,10 +20,13 @@ class Agent0Evolve(Extension):
                 return
 
             # Get the task (first user message) and solution (last response)
+            # agent.history.output() returns list[OutputMessage] (TypedDict: {"ai": bool, "content": MessageContent})
+            history_output = agent.history.output()
             task = ""
-            for msg in agent.history:
-                if getattr(msg, "role", "") == "user":
-                    task = str(getattr(msg, "content", ""))[:500]
+            for msg in history_output:
+                if not msg.get("ai", True):  # user message has ai=False
+                    raw = msg.get("content", "")
+                    task = (raw if isinstance(raw, str) else str(raw))[:500]
                     break
             if not task or len(task) < 20:
                 return
@@ -32,11 +35,12 @@ class Agent0Evolve(Extension):
             if not solution:
                 return
 
-            # Extract tool calls
+            # Extract tool calls from recent AI messages
             import re
             tool_calls = []
-            for msg in agent.history[-20:]:
-                content = str(getattr(msg, "content", "") or "")
+            for msg in history_output[-20:]:
+                raw = msg.get("content", "")
+                content = raw if isinstance(raw, str) else str(raw)
                 tools = re.findall(r'"tool_name"\s*:\s*"([^"]+)"', content)
                 tool_calls.extend(t for t in tools if t not in ("response", "wait"))
 
