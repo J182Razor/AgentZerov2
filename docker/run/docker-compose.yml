@@ -1,16 +1,12 @@
 services:
   agent-zero:
     container_name: agent-zero
-    # Build from local source so all custom features (telemetry, quota manager,
-    # nightly synthesis, auto-skill creation, swarm hint, etc.) are baked in.
+    # Build from local source (self-contained, no external base image).
     # Run from the repo root:  docker compose -f docker/run/docker-compose.yml up --build
     build:
       context: ../../
-      dockerfile: DockerfileLocal
-      args:
-        BRANCH: local
-        CACHE_DATE: ${CACHE_DATE:-none}
-    image: agent-zero-local
+      dockerfile: Dockerfile
+    image: johnlawal/agent-zero:latest
     restart: unless-stopped
 
     ports:
