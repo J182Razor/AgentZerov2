@@ -14,7 +14,8 @@
       "Bash(docker build:*)",
       "Bash(ls:*)",
       "Bash(docker:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(cp Dockerfile:*)"
     ]
   }
 }
