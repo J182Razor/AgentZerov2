@@ -1,8 +1,8 @@
 # Use the pre-built base image for A0
 FROM agent0ai/agent-zero-base:latest
 
-# Set BRANCH to "swarm" for our custom build
-ARG BRANCH=swarm
+# Use "local" branch to build from the COPY'd source files
+ARG BRANCH=local
 ENV BRANCH=$BRANCH
 
 # Copy filesystem files to root

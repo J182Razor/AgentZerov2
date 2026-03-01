@@ -45,6 +45,7 @@ tmp/
 *.key
 secrets.json
 credentials.json
+.docker-credentials
 
 # Database files (user-specific)
 *.db

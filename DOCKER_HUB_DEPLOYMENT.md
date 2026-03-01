@@ -5,8 +5,8 @@ This guide explains how to build and deploy the enhanced Agent Zero framework wi
 ## Prerequisites
 
 1. Docker installed and running on your system
-2. Docker Hub account (username: johnlawal)
-3. Docker Hub access token (dckr_pat_9L227TJ2lbKWx0SQYwB6v4Q4m3c)
+2. Docker Hub account
+3. Docker Hub access token (set via `docker login` or `DOCKER_HUB_TOKEN` env var)
 
 ## Building the Docker Image
 
@@ -31,7 +31,7 @@ Tag the image for your Docker Hub repository:
 
 1. Login to Docker Hub using your access token:
    ```bash
-   docker login -u johnlawal -p dckr_pat_9L227TJ2lbKWx0SQYwB6v4Q4m3c
+   docker login -u <your-username>
    ```
 
 2. Push the image to Docker Hub:
