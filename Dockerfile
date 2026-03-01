@@ -7,6 +7,8 @@ FROM kalilinux/kali-rolling
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
 ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 TZ=UTC
+ENV PYENV_ROOT=/opt/pyenv
+ENV PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
 
 # ── 1. Locale & timezone ────────────────────────────────────────────────────
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales tzdata \
@@ -17,27 +19,27 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales 
     && echo "UTC" > /etc/timezone \
     && dpkg-reconfigure -f noninteractive tzdata
 
-# ── 2. System packages ─────────────────────────────────────────────────────
-RUN apt-get install -y --no-install-recommends \
+# ── 2. System packages + build dependencies (single layer) ─────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
         sudo curl wget git cron \
         openssh-server ffmpeg supervisor \
         nodejs npm \
         tesseract-ocr tesseract-ocr-script-latn poppler-utils \
-    && apt-get clean
-
-# ── 3. Python 3.13 (system) + pyenv Python 3.12 (app venv) ────────────────
-RUN apt-get update && apt-get install -y --no-install-recommends \
         python3.13 python3.13-venv \
-        make build-essential libssl-dev zlib1g-dev libbz2-dev \
+        make build-essential gcc g++ libssl-dev zlib1g-dev libbz2-dev \
         libreadline-dev libsqlite3-dev llvm \
         libncursesw5-dev xz-utils tk-dev libxml2-dev \
         libxmlsec1-dev libffi-dev liblzma-dev \
-    && python3.13 -m venv /opt/venv \
+        libxslt-dev
+
+# ── 3. Python 3.13 system venv ─────────────────────────────────────────────
+RUN python3.13 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --upgrade pip pipx ipython requests
 
-# Install pyenv + Python 3.12.4 for the Agent Zero venv
+# ── 4. pyenv + Python 3.12.4 app venv + PyTorch CPU ───────────────────────
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv \
-    && /opt/pyenv/bin/pyenv install 3.12.4 \
+    && eval "$(pyenv init --path)" \
+    && pyenv install 3.12.4 \
     && /opt/pyenv/versions/3.12.4/bin/python -m venv /opt/venv-a0 \
     && /opt/venv-a0/bin/pip install --no-cache-dir --upgrade pip \
     && /opt/venv-a0/bin/pip install --no-cache-dir \
@@ -52,10 +54,8 @@ RUN printf 'export PYENV_ROOT="/opt/pyenv"\nexport PATH="$PYENV_ROOT/bin:$PATH"\
 # Install uv (fast pip replacement)
 RUN curl -Ls https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
 
-# ── 4. SearXNG (private metasearch engine) ─────────────────────────────────
-RUN apt-get install -y --no-install-recommends \
-        build-essential libxslt-dev zlib1g-dev libffi-dev libssl-dev \
-    && useradd --shell /bin/bash --system --home-dir /usr/local/searxng \
+# ── 5. SearXNG (private metasearch engine) ─────────────────────────────────
+RUN useradd --shell /bin/bash --system --home-dir /usr/local/searxng \
         --comment 'Privacy-respecting metasearch engine' searxng \
     && usermod -aG sudo searxng \
     && mkdir -p /usr/local/searxng && chown -R searxng:searxng /usr/local/searxng
@@ -70,31 +70,31 @@ RUN su - searxng -c '\
     && pip install --no-cache-dir --use-pep517 --no-build-isolation . \
     && pip cache purge'
 
-# ── 5. SSH ─────────────────────────────────────────────────────────────────
+# ── 6. SSH ─────────────────────────────────────────────────────────────────
 RUN mkdir -p /var/run/sshd \
     && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
-# ── 6. Copy runtime filesystem overlay + app source ───────────────────────
+# ── 7. Copy runtime filesystem overlay + app source ───────────────────────
 COPY ./docker/run/fs/ /
 COPY ./ /git/agent-zero
 
-# ── 7. Install Agent Zero into venv ───────────────────────────────────────
+# ── 8. Install Agent Zero into venv ───────────────────────────────────────
 RUN bash /ins/pre_install.sh $BRANCH
 RUN bash /ins/install_A0.sh $BRANCH
 
 # Playwright + Chromium
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         fonts-unifont libnss3 libnspr4 libatk1.0-0 libatspi2.0-0 \
         libxcomposite1 libxdamage1 libatk-bridge2.0-0 libcups2 \
     && . /opt/venv-a0/bin/activate \
     && uv pip install playwright \
     && PLAYWRIGHT_BROWSERS_PATH=/a0/tmp/playwright playwright install chromium --only-shell
 
-# ── 8. Cleanup ────────────────────────────────────────────────────────────
+# ── 9. Cleanup ────────────────────────────────────────────────────────────
 RUN rm -rf /var/lib/apt/lists/* && apt-get clean \
     && . /opt/venv-a0/bin/activate && pip cache purge && uv cache prune
 
-# ── 9. Expose & run ──────────────────────────────────────────────────────
+# ── 10. Expose & run ─────────────────────────────────────────────────────
 EXPOSE 22 80
 
 RUN chmod +x /exe/initialize.sh /exe/run_A0.sh /exe/run_searxng.sh /exe/run_tunnel_api.sh
