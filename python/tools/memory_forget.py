@@ -10,25 +10,25 @@ from python.helpers.tool import Tool, Response
 
 
 class MemoryForget(Tool):
- """Forget memories matching a query from fused memory system"""
+    """Forget memories matching a query from fused memory system"""
 
- async def execute(
- self,
- query: str = "",
- threshold: float = 0.75,
- limit: int = 100,
- **kwargs
- ) -> Response:
- if not query:
- return Response(message="No query provided for memory forget", break_loop=False)
+    async def execute(
+        self,
+        query: str = "",
+        threshold: float = 0.75,
+        limit: int = 100,
+        **kwargs
+    ) -> Response:
+        if not query:
+            return Response(message="No query provided for memory forget", break_loop=False)
 
- try:
- facade = await get_facade()
- result = await facade.forget(query=query, threshold=threshold, limit=limit)
+        try:
+            facade = await get_facade()
+            result = await facade.forget(query=query, threshold=threshold, limit=limit)
 
- return Response(
- message=f"✅ Forgot {result['deleted_count']} memories matching: {query}",
- break_loop=False
- )
- except Exception as e:
- return Response(message=f"Memory forget completed (fallback mode)", break_loop=False)
+            return Response(
+                message=f"✅ Forgot {result['deleted_count']} memories matching: {query}",
+                break_loop=False
+            )
+        except Exception as e:
+            return Response(message=f"Memory forget completed (fallback mode)", break_loop=False)
