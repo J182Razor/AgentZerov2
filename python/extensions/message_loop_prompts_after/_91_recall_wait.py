@@ -1,4 +1,5 @@
 from python.helpers.extension import Extension
+from python.helpers.print_style import PrintStyle
 from agent import LoopData
 from python.extensions.message_loop_prompts_after._50_recall_memories import DATA_NAME_TASK as DATA_NAME_TASK_MEMORIES, DATA_NAME_ITER as DATA_NAME_ITER_MEMORIES
 # from python.extensions.message_loop_prompts_after._51_recall_solutions import DATA_NAME_TASK as DATA_NAME_TASK_SOLUTIONS
@@ -21,9 +22,13 @@ class RecallWait(Extension):
                     delay_text = self.agent.read_prompt("memory.recall_delay_msg.md")
                     loop_data.extras_temporary["memory_recall_delayed"] = delay_text
                     return
-            
-            # otherwise await the task
-            await task
+
+            # otherwise await the task, but don't crash monologue on timeout
+            try:
+                await task
+            except (TimeoutError, Exception) as e:
+                PrintStyle.warning(f"Memory recall failed (non-fatal): {e}")
+                self.agent.set_data(DATA_NAME_TASK_MEMORIES, None)
 
         # task = self.agent.get_data(DATA_NAME_TASK_SOLUTIONS)
         # if task and not task.done():
