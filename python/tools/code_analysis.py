@@ -1,6 +1,10 @@
 import os
-import aiohttp
 from python.helpers.tool import Tool, Response
+
+try:
+    import aiohttp as _aiohttp
+except ImportError:
+    _aiohttp = None  # type: ignore
 
 
 class CodeAnalysis(Tool):
@@ -9,6 +13,9 @@ class CodeAnalysis(Tool):
     FASTCODE_BASE_URL = os.environ.get("FASTCODE_URL", "http://localhost:8100")
 
     async def execute(self, **kwargs) -> Response:
+        if _aiohttp is None:
+            return Response(message="Error: 'aiohttp' is not installed. Run: pip install aiohttp", break_loop=False)
+
         method = self.method if hasattr(self, "method") and self.method else "search"
 
         if method == "index":
@@ -31,14 +38,14 @@ class CodeAnalysis(Tool):
             return Response(message="Error: 'path' argument is required for index method.", break_loop=False)
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.FASTCODE_BASE_URL}/api/index",
                     json={"path": path},
                 ) as resp:
                     result = await resp.text()
                     return Response(message=result, break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to FastCode server at {self.FASTCODE_BASE_URL}. "
                         "Please ensure the FastCode server is running.",
@@ -58,14 +65,14 @@ class CodeAnalysis(Tool):
             params["path"] = path
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.get(
                     f"{self.FASTCODE_BASE_URL}/api/search",
                     params=params,
                 ) as resp:
                     result = await resp.text()
                     return Response(message=result, break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to FastCode server at {self.FASTCODE_BASE_URL}. "
                         "Please ensure the FastCode server is running.",
@@ -80,14 +87,14 @@ class CodeAnalysis(Tool):
             return Response(message="Error: 'path' argument is required for explain method.", break_loop=False)
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.get(
                     f"{self.FASTCODE_BASE_URL}/api/explain",
                     params={"path": path},
                 ) as resp:
                     result = await resp.text()
                     return Response(message=result, break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to FastCode server at {self.FASTCODE_BASE_URL}. "
                         "Please ensure the FastCode server is running.",
@@ -102,14 +109,14 @@ class CodeAnalysis(Tool):
             return Response(message="Error: 'symbol' argument is required for navigate method.", break_loop=False)
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.get(
                     f"{self.FASTCODE_BASE_URL}/api/navigate",
                     params={"symbol": symbol},
                 ) as resp:
                     result = await resp.text()
                     return Response(message=result, break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to FastCode server at {self.FASTCODE_BASE_URL}. "
                         "Please ensure the FastCode server is running.",

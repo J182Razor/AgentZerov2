@@ -1,6 +1,10 @@
 import os
-import aiohttp
 from python.helpers.tool import Tool, Response
+
+try:
+    import aiohttp as _aiohttp
+except ImportError:
+    _aiohttp = None  # type: ignore
 
 
 class AnyTool(Tool):
@@ -10,6 +14,9 @@ class AnyTool(Tool):
     MAX_RESPONSE_LENGTH = 4000
 
     async def execute(self, **kwargs) -> Response:
+        if _aiohttp is None:
+            return Response(message="Error: 'aiohttp' is not installed. Run: pip install aiohttp", break_loop=False)
+
         method = self.method if hasattr(self, "method") and self.method else "execute"
 
         if method == "execute":
@@ -35,14 +42,14 @@ class AnyTool(Tool):
             return Response(message="Error: 'task' argument is required for execute method.", break_loop=False)
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.ANYTOOL_BASE_URL}/api/execute",
                     json={"task": task},
                 ) as resp:
                     result = await resp.text()
                     return Response(message=self._truncate(result), break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to AnyTool server at {self.ANYTOOL_BASE_URL}. "
                         "Please ensure the AnyTool server is running.",
@@ -57,14 +64,14 @@ class AnyTool(Tool):
             return Response(message="Error: 'query' argument is required for discover method.", break_loop=False)
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.get(
                     f"{self.ANYTOOL_BASE_URL}/api/discover",
                     params={"q": query},
                 ) as resp:
                     result = await resp.text()
                     return Response(message=self._truncate(result), break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to AnyTool server at {self.ANYTOOL_BASE_URL}. "
                         "Please ensure the AnyTool server is running.",
@@ -79,14 +86,14 @@ class AnyTool(Tool):
             return Response(message="Error: 'action' argument is required for gui method.", break_loop=False)
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with _aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.ANYTOOL_BASE_URL}/api/gui",
                     json={"action": action},
                 ) as resp:
                     result = await resp.text()
                     return Response(message=self._truncate(result), break_loop=False)
-        except aiohttp.ClientConnectorError:
+        except _aiohttp.ClientConnectorError:
             return Response(
                 message=f"Error: Could not connect to AnyTool server at {self.ANYTOOL_BASE_URL}. "
                         "Please ensure the AnyTool server is running.",
