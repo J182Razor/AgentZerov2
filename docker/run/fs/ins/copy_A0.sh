@@ -5,8 +5,8 @@ set -e
 SOURCE_DIR="/git/agent-zero"
 TARGET_DIR="/a0"
 
-# Copy repository files if run_ui.py is missing in /a0 (if the volume is mounted)
-if [ ! -f "$TARGET_DIR/run_ui.py" ]; then
-    echo "Copying files from $SOURCE_DIR to $TARGET_DIR..."
-    cp -rn --no-preserve=ownership,mode "$SOURCE_DIR/." "$TARGET_DIR"
-fi
+# Always sync code from the image into /a0 so container upgrades
+# pick up fixes.  User data lives in named volumes (knowledge, usr/*)
+# and won't be touched — only code files are overwritten.
+echo "Copying files from $SOURCE_DIR to $TARGET_DIR..."
+cp -r --no-preserve=ownership,mode "$SOURCE_DIR/." "$TARGET_DIR"

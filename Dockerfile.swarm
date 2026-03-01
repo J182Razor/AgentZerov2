@@ -1,36 +1,101 @@
-# Use the pre-built base image for A0
-FROM agent0ai/agent-zero-base:latest
+###############################################################################
+# Agent Zero Swarm — Alias for the self-contained Dockerfile
+# Kept for backwards compatibility. Use `Dockerfile` directly.
+###############################################################################
+# This is identical to Dockerfile. Both build from local source with no
+# external image dependency.
 
-# Use "local" branch to build from the COPY'd source files
+FROM kalilinux/kali-rolling
+
 ARG BRANCH=local
 ENV BRANCH=$BRANCH
+ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 TZ=UTC
 
-# Copy filesystem files to root
+# ── 1. Locale & timezone ────────────────────────────────────────────────────
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales tzdata \
+    && sed -i -e 's/# \(en_US\.UTF-8 .*\)/\1/' /etc/locale.gen \
+    && dpkg-reconfigure --frontend=noninteractive locales \
+    && update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 \
+    && ln -sf /usr/share/zoneinfo/UTC /etc/localtime \
+    && echo "UTC" > /etc/timezone \
+    && dpkg-reconfigure -f noninteractive tzdata
+
+# ── 2. System packages ─────────────────────────────────────────────────────
+RUN apt-get install -y --no-install-recommends \
+        sudo curl wget git cron \
+        openssh-server ffmpeg supervisor \
+        nodejs npm \
+        tesseract-ocr tesseract-ocr-script-latn poppler-utils \
+    && apt-get clean
+
+# ── 3. Python 3.13 (system) + pyenv Python 3.12 (app venv) ────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3.13 python3.13-venv \
+        make build-essential libssl-dev zlib1g-dev libbz2-dev \
+        libreadline-dev libsqlite3-dev llvm \
+        libncursesw5-dev xz-utils tk-dev libxml2-dev \
+        libxmlsec1-dev libffi-dev liblzma-dev \
+    && python3.13 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir --upgrade pip pipx ipython requests
+
+RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv \
+    && /opt/pyenv/bin/pyenv install 3.12.4 \
+    && /opt/pyenv/versions/3.12.4/bin/python -m venv /opt/venv-a0 \
+    && /opt/venv-a0/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/venv-a0/bin/pip install --no-cache-dir \
+        torch==2.4.0 torchvision==0.19.0 \
+        --index-url https://download.pytorch.org/whl/cpu \
+    && /opt/venv-a0/bin/pip cache purge
+
+RUN printf 'export PYENV_ROOT="/opt/pyenv"\nexport PATH="$PYENV_ROOT/bin:$PATH"\neval "$(pyenv init --path)"\n' \
+    > /etc/profile.d/pyenv.sh && chmod +x /etc/profile.d/pyenv.sh
+
+RUN curl -Ls https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
+
+# ── 4. SearXNG ─────────────────────────────────────────────────────────────
+RUN apt-get install -y --no-install-recommends \
+        build-essential libxslt-dev zlib1g-dev libffi-dev libssl-dev \
+    && useradd --shell /bin/bash --system --home-dir /usr/local/searxng \
+        --comment 'Privacy-respecting metasearch engine' searxng \
+    && usermod -aG sudo searxng \
+    && mkdir -p /usr/local/searxng && chown -R searxng:searxng /usr/local/searxng
+
+RUN su - searxng -c '\
+    git clone https://github.com/searxng/searxng /usr/local/searxng/searxng-src \
+    && python3.13 -m venv /usr/local/searxng/searx-pyenv \
+    && echo ". /usr/local/searxng/searx-pyenv/bin/activate" >> /usr/local/searxng/.profile \
+    && . /usr/local/searxng/searx-pyenv/bin/activate \
+    && pip install --no-cache-dir -U pip setuptools wheel pyyaml lxml msgspec typing_extensions \
+    && cd /usr/local/searxng/searxng-src \
+    && pip install --no-cache-dir --use-pep517 --no-build-isolation . \
+    && pip cache purge'
+
+# ── 5. SSH ─────────────────────────────────────────────────────────────────
+RUN mkdir -p /var/run/sshd \
+    && sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# ── 6. Copy runtime filesystem overlay + app source ───────────────────────
 COPY ./docker/run/fs/ /
-
-# Copy current development files to git, they will only be used in "swarm" branch
 COPY ./ /git/agent-zero
 
-# Pre installation steps
+# ── 7. Install Agent Zero into venv ───────────────────────────────────────
 RUN bash /ins/pre_install.sh $BRANCH
-
-# Install A0
 RUN bash /ins/install_A0.sh $BRANCH
 
-# Install additional software
-RUN bash /ins/install_additional.sh $BRANCH
+RUN apt-get install -y --no-install-recommends \
+        fonts-unifont libnss3 libnspr4 libatk1.0-0 libatspi2.0-0 \
+        libxcomposite1 libxdamage1 libatk-bridge2.0-0 libcups2 \
+    && . /opt/venv-a0/bin/activate \
+    && uv pip install playwright \
+    && PLAYWRIGHT_BROWSERS_PATH=/a0/tmp/playwright playwright install chromium --only-shell
 
-# Cleanup repo and install A0 without caching, this speeds up builds
-ARG CACHE_DATE=none
-RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH
+# ── 8. Cleanup ────────────────────────────────────────────────────────────
+RUN rm -rf /var/lib/apt/lists/* && apt-get clean \
+    && . /opt/venv-a0/bin/activate && pip cache purge && uv cache prune
 
-# Post installation steps
-RUN bash /ins/post_install.sh $BRANCH
-
-# Expose ports
-EXPOSE 22 80 9000-9009
+# ── 9. Expose & run ──────────────────────────────────────────────────────
+EXPOSE 22 80
 
 RUN chmod +x /exe/initialize.sh /exe/run_A0.sh /exe/run_searxng.sh /exe/run_tunnel_api.sh
 
-# Initialize runtime and switch to supervisord
-CMD ["/exe/initialize.sh", "$BRANCH"]
+CMD ["/exe/initialize.sh", "local"]
