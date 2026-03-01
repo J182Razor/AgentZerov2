@@ -53,24 +53,50 @@ class Profiler:
     def disable(self):
         self._enabled = False
 
-def timed(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        try:
-            return func(*args, **kwargs)
-        finally:
-            duration = time.perf_counter() - start
-            Profiler().record(func.__name__, duration)
-    return wrapper
+def timed(func_or_name=None):
+    """Decorator that records timing. Supports both @timed and @timed("name")."""
+    def _make_wrapper(func, name):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            try:
+                return func(*args, **kwargs)
+            finally:
+                duration = time.perf_counter() - start
+                Profiler().record(name, duration)
+        return wrapper
 
-def async_timed(func):
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        try:
-            return await func(*args, **kwargs)
-        finally:
-            duration = time.perf_counter() - start
-            Profiler().record(func.__name__, duration)
-    return wrapper
+    if func_or_name is None:
+        def decorator(func):
+            return _make_wrapper(func, func.__name__)
+        return decorator
+    elif callable(func_or_name):
+        return _make_wrapper(func_or_name, func_or_name.__name__)
+    else:
+        def decorator(func):
+            return _make_wrapper(func, func_or_name)
+        return decorator
+
+def async_timed(func_or_name=None):
+    """Async decorator that records timing. Supports both @async_timed and @async_timed("name")."""
+    def _make_wrapper(func, name):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            try:
+                return await func(*args, **kwargs)
+            finally:
+                duration = time.perf_counter() - start
+                Profiler().record(name, duration)
+        return wrapper
+
+    if func_or_name is None:
+        def decorator(func):
+            return _make_wrapper(func, func.__name__)
+        return decorator
+    elif callable(func_or_name):
+        return _make_wrapper(func_or_name, func_or_name.__name__)
+    else:
+        def decorator(func):
+            return _make_wrapper(func, func_or_name)
+        return decorator

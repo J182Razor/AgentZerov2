@@ -41,7 +41,7 @@ from python.helpers.extension import call_extensions
 from python.helpers.errors import RepairableException
 
 try:
-    from python.helpers.profiling import timed as profile_async
+    from python.helpers.profiling import async_timed as profile_async
     _HAS_PROFILING = True
 except ImportError:
     _HAS_PROFILING = False

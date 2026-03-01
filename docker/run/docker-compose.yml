@@ -18,11 +18,13 @@ services:
       - "${SSH_PORT:-50022}:22"      # SSH code execution (optional)
 
     volumes:
-      # Persistent agent data: chats, memory, user settings, skills, knowledge
-      - ./agent-zero:/a0
-      # Named volumes so new-feature data survives container rebuilds
+      # Named volumes for ALL persistent user data — survives container rebuilds
+      # and image upgrades without data loss.
       - a0_knowledge:/a0/knowledge
+      - a0_usr_knowledge:/a0/usr/knowledge
       - a0_skills:/a0/usr/skills
+      - a0_projects:/a0/usr/projects
+      - a0_agents:/a0/usr/agents
       - a0_logs:/a0/logs
 
     environment:
@@ -37,17 +39,6 @@ services:
       # ── Flask ──────────────────────────────────────────────────────────
       FLASK_SECRET_KEY: "${FLASK_SECRET_KEY:-}"
 
-      # ── NVIDIA NIM / quota manager ─────────────────────────────────────
-      # Quota headers are read from API responses automatically; this key
-      # is passed to LiteLLM via agent settings, not directly here.
-      # Set it in Settings → Chat Model or in your .env file.
-      # NVIDIA_NIM_API_KEY: "${NVIDIA_NIM_API_KEY:-}"
-
-      # ── Telemetry & nightly synthesis ─────────────────────────────────
-      # No extra env vars required; synthesis writes to /a0/knowledge/nightly_synthesis
-      # and prompt evolution scores to /a0/knowledge/prompt_evolution/scores.jsonl.
-      # Both paths are covered by the a0_knowledge named volume above.
-
       # ── Misc ──────────────────────────────────────────────────────────
       TOKENIZERS_PARALLELISM: "false"
       TZ: "UTC"
@@ -60,5 +51,8 @@ services:
 
 volumes:
   a0_knowledge:
+  a0_usr_knowledge:
   a0_skills:
+  a0_projects:
+  a0_agents:
   a0_logs:
