@@ -4,9 +4,9 @@ services:
     # Build from local source (self-contained, no external base image).
     # Run from the repo root:  docker compose -f docker/run/docker-compose.yml up --build
     build:
-      context: ../../
+      context: ../..
       dockerfile: Dockerfile
-    image: johnlawal/agent-zero:latest
+    image: johnlawal/agent-zero:v2.1.0
     restart: unless-stopped
 
     ports:
