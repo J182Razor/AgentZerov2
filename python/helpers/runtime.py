@@ -1,6 +1,7 @@
 import argparse
 import inspect
 import secrets
+import socket
 from pathlib import Path
 from typing import TypeVar, Callable, Awaitable, Union, overload, cast
 from python.helpers import dotenv, rfc, settings, files
@@ -192,3 +193,99 @@ def get_terminal_executable():
         return "powershell.exe"
     else:
         return "/bin/bash"
+
+
+def find_available_port(start_port: int = 5000, max_attempts: int = 100) -> int:
+    """
+    Find an available port starting from start_port.
+    Implements port conflict resolution with automatic fallback.
+
+    Args:
+        start_port: Starting port to check (default: 5000)
+        max_attempts: Maximum number of ports to try (default: 100)
+
+    Returns:
+        Available port number
+
+    Raises:
+        RuntimeError: If no available port is found after max_attempts
+    """
+    for port in range(start_port, start_port + max_attempts):
+        if is_port_available(port):
+            return port
+    raise RuntimeError(
+        f"No available port found in range {start_port}-{start_port + max_attempts}"
+    )
+
+
+def is_port_available(port: int) -> bool:
+    """
+    Check if a port is available for binding.
+
+    Args:
+        port: Port number to check
+
+    Returns:
+        True if port is available, False otherwise
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind(("127.0.0.1", port))
+            return True
+    except OSError:
+        return False
+
+
+def get_web_ui_port_with_fallback() -> int:
+    """
+    Get web UI port with automatic conflict resolution.
+    Falls back to next available port if default is in use.
+
+    Returns:
+        Available port number
+    """
+    preferred_port = get_web_ui_port()
+
+    # If preferred port is available, use it
+    if is_port_available(preferred_port):
+        return preferred_port
+
+    # Try to find an available port starting from preferred
+    from python.helpers.print_style import PrintStyle
+
+    PrintStyle(font_color="yellow").print(
+        f"Port {preferred_port} is in use, searching for available port..."
+    )
+
+    available_port = find_available_port(preferred_port)
+    PrintStyle(font_color="green").print(f"Using available port: {available_port}")
+
+    return available_port
+
+
+def get_tunnel_api_port_with_fallback() -> int:
+    """
+    Get tunnel API port with automatic conflict resolution.
+    Falls back to next available port if default is in use.
+
+    Returns:
+        Available port number
+    """
+    preferred_port = get_tunnel_api_port()
+
+    if is_port_available(preferred_port):
+        return preferred_port
+
+    from python.helpers.print_style import PrintStyle
+
+    PrintStyle(font_color="yellow").print(
+        f"Tunnel API port {preferred_port} is in use, searching for available port..."
+    )
+
+    available_port = find_available_port(preferred_port)
+    PrintStyle(font_color="green").print(
+        f"Using available tunnel API port: {available_port}"
+    )
+
+    return available_port
