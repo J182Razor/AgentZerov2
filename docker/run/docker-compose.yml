@@ -6,7 +6,7 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile
-    image: johnlawal/agent-zero:v2.1.0
+    # image: j182razor/Agent-Zero:v2.1.0  # Commented out to force build from source
     restart: unless-stopped
 
     ports:
