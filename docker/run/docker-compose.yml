@@ -6,8 +6,18 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile
-    # image: j182razor/Agent-Zero:v2.1.0  # Commented out to force build from source
+      # Uncomment to specify build arguments if needed:
+      # args:
+      #   - BUILDKIT_INLINE_CACHE=1
+    # image: j182razor/agent-zero:v2.1.0  # Uncomment to use pre-built image instead of building
     restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
     ports:
       - "${WEB_UI_PORT:-50080}:80"   # Agent Zero web UI
